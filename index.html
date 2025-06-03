@@ -1144,38 +1144,45 @@ class ThermodynamicsSimulator {
         document.getElementById('overallProgress').style.width = '0%';
     }
 
-    animate() {
-        if (!this.isRunning) return;
-        const dt = this.simulationStep; // segundos
-        this.timeElapsed += dt;
-        const heatRate = (this.power * this.efficiency) / 1000; // kW
-        const dQ = heatRate * dt; // kJ
-        this.heatApplied += dQ;
-        this.lastTemp = this.temperature;
-        if (this.waterRemaining > 0) {
-            if (this.temperature < 100) {
-                let dT = dQ / (this.mass * this.c_water);
-                this.temperature += dT;
-                if (this.temperature > 100) this.temperature = 100;
-            } else {
-                const evaporationRate = dQ / this.L_vaporization;
-                this.waterRemaining -= evaporationRate;
-                if (this.waterRemaining < 0) this.waterRemaining = 0;
-                this.temperature = 100;
-            }
-        } else {
-            const additionalHeat = dQ;
-            let dT = additionalHeat / (0.1 * this.mass * this.c_water);
+   animate() {
+    if (!this.isRunning) return;
+    const dt = this.simulationStep; // segundos
+    this.timeElapsed += dt;
+    const heatRate = (this.power * this.efficiency) / 1000; // kW
+    const dQ = heatRate * dt; // kJ
+    this.heatApplied += dQ;
+    this.lastTemp = this.temperature;
+
+    if (this.waterRemaining > 0) {
+        if (this.temperature < 100) {
+            let dT = dQ / (this.mass * this.c_water);
             this.temperature += dT;
-            if (this.temperature > 110) this.temperature = 110;
+            if (this.temperature > 100) this.temperature = 100;
+        } else {
+            // Calcular la tasa de evaporación
+            const evaporationRate = dQ / this.L_vaporization; // kg/s
+            this.waterRemaining -= evaporationRate * dt; // Reducir el agua en función del tiempo
+            if (this.waterRemaining < 0) this.waterRemaining = 0;
+            this.temperature = 100;
         }
-        this.heatingRate = (this.temperature - this.lastTemp) / dt;
-        this.updateDisplay();
-        this.updateWaterLevel();
+    } else {
+        // Si el agua se ha evaporado completamente, detener la simulación
+        this.isRunning = false;
+        this.updatePowerStatus();
+        this.hideFlames();
         this.updateVisualEffects();
-        this.updateProgress();
-        this.animationId = requestAnimationFrame(() => this.animate());
+        document.getElementById('currentState').textContent = 'Finalizado';
+        document.getElementById('nextPhase').textContent = 'Proceso Completo';
+        return; // Salir de la función para detener la animación
     }
+
+    this.heatingRate = (this.temperature - this.lastTemp) / dt;
+    this.updateDisplay();
+    this.updateWaterLevel();
+    this.updateVisualEffects();
+    this.updateProgress();
+    this.animationId = requestAnimationFrame(() => this.animate());
+}
 }
 
 const simulator = new ThermodynamicsSimulator();
